@@ -2,30 +2,46 @@ import java.util.*;
 
 /**
  * Aho-Corasick State Automaton
+ * based on lecture notes: http://www.cs.uku.fi/~kilpelai/BSA05/lectures/slides04.pdf
+ *
+ * Start state is root:
+ *  children are forward edges
+ *  failures are back or cross edges
  */
 public class AC {
+  // node count, used for labeling
   private int nodes;
-  private Node root;
+  // dictionary
   private ArrayList<String> words;
+  // alphabet
+  private char[] sigma;
+  private Node root;
 
-  public AC(ArrayList<String> words) {
+  public AC(ArrayList<String> words, char[] sigma) {
     this.nodes = 0;
-    this.root = null;
+    this.sigma = sigma;
     this.words = words;
+    this.root = null;
+
     process();
   }
 
+  // returns arraylist of matched strings
   public ArrayList<String> match(String str) {
-    char[] arr = str.toCharArray();
-    int m = arr.length;
-
+    return match(str.toCharArray());
+  }
+  public ArrayList<String> match(char[] arr) {
     ArrayList<String> matched = new ArrayList<String>();
     Node curr = this.root;
-    for (int i = 0; i < m; i++) {
-      while (!curr.hasChild(arr[i])) {
+    
+    // step character by character through the automaton
+    // add words when end states "isWord" are reached
+    for (char c : arr) {
+      while (!curr.hasChild(c)) { 
         curr = curr.getFailure(); 
       }
-      curr = curr.getChild(arr[i]);
+
+      curr = curr.getChild(c);
       if (curr.isWord()) {
         matched.add(curr.getWord());
       }
@@ -33,29 +49,43 @@ public class AC {
     return matched;
   }
 
+  // build the automaton
   private void process() {
     this.root = new Node(this.nodes);
     this.nodes++;
+    
     /*
-     * Phase 1, add words to key word tree
+     * Phase 1, add words to key word trie
      */ 
     for (String word : words) {
       add(word);
     }
+    
+    /*
+     * Pahse 2, complete gotos for the root
+     */
+    for (char c : this.sigma) {
+      if (!this.root.hasChild(c)) {
+        this.root.addChild(c, this.root);
+      }
+    }
 
     /*
-     * Phase 2, build failure functions via BFS
+     * Phase 3, build failure functions via BFS
      */
-    phase2();
+    buildFailures();
   }
 
-  private void phase2() {
+  private void buildFailures() {
     // queue
     LinkedList<Node> q = new LinkedList<>();
 
-    // base case root children
+    // base cases root children
     for (char c : this.root.getChildren()) {
       Node child = this.root.getChild(c);
+      if (child == this.root) {
+        continue;
+      }
       child.setFailure(this.root);
       q.addLast(child);
     }
@@ -67,20 +97,18 @@ public class AC {
         Node child = p.getChild(c);
         q.addLast(child);
 
+        // backtrack on failures if no child
         Node v = p.getFailure();
-        while (!v.hasChild(c) && v != this.root) {
+        while (!v.hasChild(c)) {
           v = v.getFailure();
         }
 
-        if (v.getChild(c) == null) {
-          child.setFailure(this.root);
-        } else {
-          child.setFailure(v.getChild(c));
-        }
+        child.setFailure(v.getChild(c));
       }
     }
   }
 
+  // add a word to the trie
   private void add(String word) {
     char[] arr = word.toCharArray();
     int n = arr.length;
@@ -104,8 +132,7 @@ public class AC {
     }
   }
 
-
-
+  // preorder traversal
   private StringBuffer str = null;
   public String toString() {
     str = new StringBuffer();
@@ -126,6 +153,8 @@ public class AC {
     str.append(String.format("%s:%c:%s(", p, c, p.getFailure())); 
     int i = 0;
     for (char child : children) {  
+      if (p.getChild(child) == this.root)
+        continue;
       preOrder(p.getChild(child), child);
       if (i != n - 1)
         str.append(",");

@@ -10,17 +10,26 @@ public class Solution {
       words.add(scan.next());
     }
 
-    AC ac = new AC(words);
-    System.out.println(ac);
-  
+    // alphabet
+    HashSet<Character> set = new HashSet<>();
     int n = scan.nextInt();
     char[][] search = new char[n][n];
     for (int i = 0; i < n; i++) {
       for (int j = 0; j < n; j++) {
         search[i][j] = scan.next().charAt(0);
+        set.add(search[i][j]);
       }
     }
+    set.add(' ');
+    char[] sigma = new char[set.size()];
+    int j = 0;
+    for (char c : set) {
+      sigma[j] = c;
+      j++;
+    }
 
+    AC ac = new AC(words, sigma);
+    System.out.println(ac);
     ArrayList<String> matches = new ArrayList<>();
 
     String[] strs = new String[8];
